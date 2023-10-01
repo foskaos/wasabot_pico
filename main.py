@@ -1,19 +1,13 @@
-from machine import UART, Pin
+from machine import UART, Pin, ADC
 import time
 import dht
-
-dht_pin=2
-sensor = dht.DHT22(Pin(dht_pin))
-
-uart0 = UART(0, baudrate=9600, tx=Pin(0), rx=Pin(1))
-
 
 class MessageEncoder:
     def __init__(self, message_type, message_data):
         self.message_type = message_type
         self.message = self.encode(message_data)
 
-    def encode(self,message_data):
+    def encode(self, message_data):
         raise NotImplementedError("Subclasses must implement this method")
 
     @staticmethod
@@ -27,9 +21,7 @@ class MessageEncoder:
         message_type = self.message_type.encode('utf-8')
         m_string = message_type + b':' + data
         cksum = self.calculate_checksum(m_string)
-        #print(cksum)
         to_send = b'<' + m_string + cksum + b'>' + b'\n'
-        #print(to_send)
         return to_send
 
 
@@ -43,10 +35,17 @@ class SensorEncoder(MessageEncoder):
         return packet
 
 
-
 class CommandEncoder(MessageEncoder):
     def __init__(self, message_data):
         super().__init__('cmd', message_data)
+
+    def encode(self, message_data):
+        packet = self.make_serial_message(message_data)
+        return packet
+
+class GeneralEncoder(MessageEncoder):
+    def __init__(self, message_type, message_data):
+        super().__init__(message_type, message_data)
 
     def encode(self, message_data):
         packet = self.make_serial_message(message_data)
@@ -61,20 +60,26 @@ class DataEncoder(MessageEncoder):
         packet = self.make_serial_message(message_data)
         return packet
 
+dht_pin = 2
+sensor = dht.DHT22(Pin(dht_pin))
 
+adc = ADC(Pin(26))
+# noinspection PyArgumentList
+uart0 = UART(0,
+             baudrate=9600,
+             tx=Pin(0),
+             rx=Pin(1))
 
+print("Sending Messages on Serial port")
 
-txData = b'this is a dummy data string for testing'
-
+uart0.write(GeneralEncoder('pico_join', 'Sending data every 2 seconds').message)
 while True:
-
-    print("Sending Messages on Serial port (dummy data and live DHT-22 Readings")
-    message_to_send = DataEncoder(txData).message
-
-    uart0.write(message_to_send)
-    time.sleep(2)
     sensor.measure()  # Recovers measurements from the sensor
+    photo = adc.read_u16()
+    light = round((1 - photo / 65535) * 100, 2)
     sensor_packet_dict = {'temp': sensor.temperature(),
-                          'humidity': sensor.humidity()}
+                          'humidity': sensor.humidity(),
+                          'light': light}
     sensor_data = SensorEncoder(sensor_packet_dict).message
     uart0.write(SensorEncoder(sensor_packet_dict).message)
+    time.sleep(2)
