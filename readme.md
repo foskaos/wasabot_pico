@@ -16,14 +16,16 @@ I will log sensor them in a database, and also provide a web ui to display them.
 Will set up various thresholds and logic to detect if environmental conditions are suitable, and actuate things to get
 things in order
 
+## So far I have:
+* Implemented multi channel ADC (ads1115) over I2C
+* 
+
 ### Outstanding for Phase 2
 * Receive Commands from server and report result
 * Water pump
 * Soil moisture sensor
 * Fan
-* Web notifications 
-* Nicer web ui (graphs, responsive etc)
-* Web API
+* 
 
 
 ## Known Issues
