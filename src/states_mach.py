@@ -84,15 +84,17 @@ class PumpStateMachine(StateMachine):
 class ReservoirStateMachine(StateMachine):
     EMPTY_THRESHOLD = 49  # Define a threshold for when the reservoir is considered empty
 
-    def __init__(self):
+    def __init__(self,adc):
         # initial_state = self.determine_state_by_weight(initial_weight)
         super().__init__(ReservoirState.INIT)
         self.name = "Reservoir"
+
         self.add_transition(ReservoirState.INIT, ReservoirState.FULL)
         self.add_transition(ReservoirState.INIT, ReservoirState.EMPTY)
         self.add_transition(ReservoirState.EMPTY, ReservoirState.FULL)
         self.add_transition(ReservoirState.FULL, ReservoirState.EMPTY)
 
+        self.adc = adc
         initial_weight = self.read_initial_weight()
         self.weight = initial_weight
         self.set_state_by_weight()
@@ -106,7 +108,7 @@ class ReservoirStateMachine(StateMachine):
             ReservoirState.FULL)
 
     def read_initial_weight(self):
-        return random.randrange(70, 75)  # Initial weight can range from 0 to 74
+        return self.adc.get_res_weight()#random.randrange(70, 75)  # Initial weight can range from 0 to 74
 
     def is_empty_by_weight(self, weight):
         return weight <= self.EMPTY_THRESHOLD
@@ -115,7 +117,7 @@ class ReservoirStateMachine(StateMachine):
         pass
 
     def read_weight(self):
-        self.weight = self.weight
+        self.weight = self.adc.get_res_weight()
         return self.weight  # random.randrange(0, self.weight + 1)
 
     def tick(self):
@@ -126,6 +128,9 @@ class ReservoirStateMachine(StateMachine):
             self.set_state(ReservoirState.EMPTY)
         elif self.state == ReservoirState.EMPTY:
             print("Reservoir: I'm empty!!")
+            if not self.is_empty_by_weight(self.weight):
+                print('Reservoir: Im full again!')
+                self.set_state(ReservoirState.FULL)
 
 
 class CommandStatus:
@@ -206,11 +211,13 @@ class Irrigator(BaseController):
         self.reservoir = reservoir
         self.target_weight = 0
         self.water_out = 0
+        self.start_weight = self.reservoir.weight
 
     def process_command(self, command):
         # Here, we'll interpret the command and start actions accordingly.
         if command.action == 'water' and command.target is not None:
             self.set_target_weight(command.target)
+            self.start_weight = self.reservoir.weight
             self.water_out = 0
             self.start_watering()
         else:
@@ -239,6 +246,7 @@ class Irrigator(BaseController):
         super().tick()  # Make sure to call the base class tick method
         # print(self.reservoir.weight)
         self.reservoir.tick()
+        self.water_out = self.start_weight - self.reservoir.weight
         if self.state == "Watering":
             print(f'Irrigator: Watering Plants to target of {self.target_weight}')
 
@@ -252,24 +260,28 @@ class Irrigator(BaseController):
                 self.set_target_weight(0)
                 if self.active_command:
                     print(f'Irrigator: Water out = {self.water_out}')
-                    self.active_command.result = self.water_out
+                    self.active_command.result = self.start_weight - self.reservoir.weight
                     self.active_command.update_status(CommandStatus.FAILED)
                     self.active_command = None
+                    self.start_weight = self.reservoir.weight
 
-            if self.pump.state == PumpState.RUNNING:  # simulate water coming out
-                self.reservoir.weight -= 1
-                self.water_out += 1
+
+            # if self.pump.state == PumpState.RUNNING:  # simulate water coming out
+            #     self.reservoir.weight -= 1
+            #     self.water_out += 1
 
             if self.target_weight >= self.reservoir.weight:
                 print(f"Irrigator: Reached target Weight of {self.target_weight} with {self.reservoir.weight}")
                 # self.pump.stop_pump()
+
                 self.set_target_weight(0)
                 self.stop_watering()
                 if self.active_command:
                     print(f'Irrigator: Water out = {self.water_out}')
-                    self.active_command.result = self.water_out
+                    self.active_command.result = self.start_weight - self.reservoir.weight
                     self.active_command.update_status(CommandStatus.COMPLETED)
                     self.active_command = None
+                    self.start_weight = self.reservoir.weight
 
             self.pump.tick()
 

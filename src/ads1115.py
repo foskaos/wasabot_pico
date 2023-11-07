@@ -81,3 +81,19 @@ class ADS1115:
         return val / max_val * voltage_ref
 
 
+class ResADC(ADS1115):
+
+    def __init__(self):
+        super().__init__(72)
+
+    @staticmethod
+    def raw_to_weight(raw_val):
+        max_val = 26340
+        ref = 100
+        return raw_val/max_val * ref
+
+    def get_res_weight(self):
+        raw = self.read_adc_from_channel('111')
+        #print('raw adc:',raw)
+        weight = self.raw_to_weight(raw)
+        return weight
