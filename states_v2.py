@@ -284,7 +284,7 @@ def on_command_completion(command):
     print(f"Command completed: {command.action}. Result: {command.result}")
 
 
-uart = machine.UART(0, 9600,timeout=500)
+uart = machine.UART(0, 9600, timeout=500)
 print(uart)
 
 internal_led = machine.Pin(25, machine.Pin.OUT)
