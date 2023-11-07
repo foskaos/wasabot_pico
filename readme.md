@@ -22,10 +22,11 @@ things in order
 
 ### Outstanding for Phase 2
 * Receive Commands from server and report result
+* State Machines
 * Water pump
 * Soil moisture sensor
 * Fan
-* 
+* Reservoir Temperature Sensor
 
 
 ## Known Issues
