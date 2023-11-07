@@ -1,7 +1,8 @@
 from machine import UART, Pin, ADC, I2C
 import time
 import dht
-
+from test_module import printa
+from states_mach import PumpState,PumpStateMachine,ReservoirState,ReservoirStateMachine,Irrigator,DeviceCommand,CommandStatus
 class MessageEncoder:
     def __init__(self, message_type, message_data):
         self.message_type = message_type
@@ -95,7 +96,6 @@ def create_config_string(mux):
     return config1
 
 
-
 def read_config():
     dev.writeto(address, bytearray([1]))
     result = dev.readfrom(address,2)
@@ -107,6 +107,7 @@ def set_config(mux):
     configur = create_config_string(mux)
     dev.writeto(address, bytearray([1] + configur))
     #print('after setting:: ', bin(read_config()))
+
 
 def read_value(channel):
 
@@ -128,11 +129,11 @@ def val_to_voltage(val,max_val=26100,voltage_ref=3.3):
 
 set_config('111')
 while True:
-    print('check bit 15')
+    #print('check bit 15')
     rbit = (read_config()>>15)&1
     if rbit:
         break
-print('before main loop config read: ', bin(read_config()))
+#print('before main loop config read: ', bin(read_config()))
 
 # noinspection PyArgumentList
 uart0 = UART(0,
@@ -141,47 +142,68 @@ uart0 = UART(0,
              rx=Pin(1))
 
 print("Sending Messages on Serial port")
+internal_led = Pin(25, Pin.OUT)
 
 uart0.write(GeneralEncoder('pico_join', 'Sending data every 2 seconds').message)
-while True:
-    print('main loop start')
-    set_config('111')
+irig = Irrigator(PumpStateMachine(), ReservoirStateMachine())
+
+
+def on_command_completion(command):
+    print(f"Command completed: {command.action}. Result: {command.result}")
+
+
+def read_adc_from_channel(channel):
+
+    set_config(channel)
     while True:
-        #print('check bit 15')
         rbit = (read_config() >> 15) & 1
         if rbit:
             break
-    time.sleep(0.01)
-    val = read_value('111')
-    print('val1: ',val)
-    volts = val_to_voltage(val)
-    sensor.measure()  # Recovers measurements from the sensor
-    photo = adc.read_u16()
-    light = round((1 - photo / 65535) * 100, 2)
+    # time.sleep(0.01)
+    adc_val = read_value(channel)
+    return adc_val
+
+
+while True:
+
+    print('main loop start')
+    start_time = time.ticks_ms()
+
+    volts = val_to_voltage(read_adc_from_channel('111'))    # adc channel "4" - > A3
+    sensor.measure()  # Recovers measurements from the DHT-22 sensor
+    photo = adc.read_u16()  # Photoresistor
+    light = round((1 - photo / 65535) * 100, 2) # convert photo re
+
+    volts2 = val_to_voltage(read_adc_from_channel('100'))  # adc channel 1 -> A0
+
     sensor_packet_dict = {'temp': sensor.temperature(),
                           'humidity': sensor.humidity(),
                           'light': light,
-                           'voltage':volts
+                          'voltage': volts,
+                          'voltage2': volts2
                           }
-    sensor_data = SensorEncoder(sensor_packet_dict).message
-    uart0.write(sensor_data)
-    time.sleep(2)
-    set_config('100')
-    while True:
-        #print('check bit 15')
-        rbit = (read_config() >> 15) & 1
-        if rbit:
-            break
-    time.sleep(0.01)
-    val2 = read_value('100')
-    print('val2: ',val2)
-    time.sleep(2)
+    uart0.write(SensorEncoder(sensor_packet_dict).message)
 
-    volts2 = val_to_voltage(val2)
-    sensor_packet_dict2 = {'temp': 0,
-                           'humidity': 0,
-                           'light': 0,
-                           'voltage2': volts2}
-    uart0.write(SensorEncoder(sensor_packet_dict2).message)
+    weight = irig.reservoir.weight
+    print(f"Current weight: {irig.reservoir.weight} grams, target = {irig.target_weight}")
+
+    if uart0.any():
+        print('uart available')
+        b = uart0.readline()
+        msg = b.decode('utf-8')
+        print(msg)
+        if msg.strip() == 'bb':
+            print('add command')
+            new = DeviceCommand('water', target=4, on_completion=on_command_completion)
+            irig.enqueue_command(new)
+
+    irig.tick()
+    internal_led.toggle()
+
+    end_time = time.ticks_ms()
+
+    print(f"total time taken this tick: {(time.ticks_diff(end_time, start_time))}ms")
     print('main loop end')
+    time.sleep(2)
+    print()
 

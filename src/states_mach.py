@@ -291,10 +291,10 @@ internal_led = machine.Pin(25, machine.Pin.OUT)
 analog_value = machine.ADC(28)
 
 
-# # Create a single instance of the StateMachine
+# Create a single instance of the StateMachine
 # irig = Irrigator(PumpStateMachine(), ReservoirStateMachine())
 # print('starting control loop\n')
-# counter = 0
+counter = 0
 # while True:
 #     # Check the weight of the reservoir
 #     start_time = time.ticks_ms()
