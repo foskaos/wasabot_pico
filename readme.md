@@ -26,10 +26,13 @@ things in order
 
 ### Outstanding for Phase 2
 * Receive Commands from server and report result
-* Soil moisture sensor
+* Soil moisture sensor - hardware tested
 * Fan
 * Reservoir Temperature Sensor
 * Investigate alternative to rest api for rapid reporting
+* Add various sensor regimes (eg. demo, ads1115 vs onboard vs hd711)
+* Add different targets for state machines (time, weight)
+* Investigate connecting sensors over rj45 
 
 
 ## Known Issues
