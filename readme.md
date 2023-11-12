@@ -18,15 +18,18 @@ things in order
 
 ## So far I have:
 * Implemented multi channel ADC (ads1115) over I2C
-* 
+* State Machines
+* Water pump
+* Pico can receive commands but have not updated rpi
+* Investigating Pico W and rest api to replace serial comms
+
 
 ### Outstanding for Phase 2
 * Receive Commands from server and report result
-* State Machines
-* Water pump
 * Soil moisture sensor
 * Fan
 * Reservoir Temperature Sensor
+* Investigate alternative to rest api for rapid reporting
 
 
 ## Known Issues
