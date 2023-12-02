@@ -12,7 +12,8 @@ adc = ADC(Pin(26))
 uart0 = UART(0,9600,timeout=500)
 
 print("Sending Messages on Serial port")
-internal_led = Pin(25, Pin.OUT)
+
+internal_led = Pin("LED", Pin.OUT)
 ads_adc = ADS1115(72)
 
 res_adc = ResADC()
