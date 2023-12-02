@@ -28,6 +28,27 @@ def on_command_failed(command):
     print(f"Command failed: {command.action}. Result: {command.result}")
 
 
+def read_dht():
+    retry_counter = 0
+    while True:
+        try:
+            sensor.measure()
+            time.sleep(0.1)
+            t = sensor.temperature()
+            h = sensor.humidity()
+            if retry_counter > 0:
+                print(f'dht ok after {retry_counter} tries')
+            break
+        except:
+            retry_counter += 1
+            print(f'dht reading failed attempt {retry_counter}, try again')
+            time.sleep(0.1)
+
+    return t, h
+
+
+last_temp, last_humidity = read_dht()
+time.sleep(2)
 
 while True:
 
@@ -35,7 +56,7 @@ while True:
     start_time = time.ticks_ms()
 
     #volts = ads_adc.val_to_voltage(ads_adc.read_adc_from_channel('100'))    # adc channel "4" - > A3
-    sensor.measure()  # Recovers measurements from the DHT-22 sensor
+    # Recovers measurements from the DHT-22 sensor
     photo = ads_adc.read_adc_from_channel('100') #adc.read_u16()  # Photoresistor
     light = round((1 - photo / 26100) * 100, 2)  # convert photo re
 
@@ -43,18 +64,25 @@ while True:
 
     rw = res_adc.get_res_weight()
 
-    print(f'photo adc: {photo}')
+    #print(f'photo adc: {photo}')
 
     r_weight = irig.reservoir.weight
     print(f"Current reservoir weight: {irig.reservoir.weight}g, target = {irig.target_weight}g")
+    try:
+        temp, humidity = read_dht()
+    except:
+        temp = last_temp
+        humidity = last_humidity
+        # 'voltage': round(volts, 2),
+    last_temp = temp
+    last_humidity = humidity
 
-    sensor_packet_dict = {'temp': sensor.temperature(),
-                          'humidity': sensor.humidity(),
+    sensor_packet_dict = {'temp': temp,
+                          'humidity': humidity,
                           'light': light,
-                          #'voltage': round(volts, 2),
                           'reservoir_weight': round(r_weight, 2)
-                          # 'voltage2': volts2
                           }
+
     uart0.write(SensorEncoder(sensor_packet_dict).message)
 
 
