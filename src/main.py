@@ -15,9 +15,9 @@ print("Sending Messages on Serial port")
 internal_led = Pin(25, Pin.OUT)
 ads_adc = ADS1115(72)
 
-res_adc = ResADC()
+# res_adc = ResADC()
 uart0.write(GeneralEncoder('pico_join', 'Sending data every 2 seconds').message)
-irig = Irrigator(PumpStateMachine(), ReservoirStateMachine(res_adc))
+# irig = Irrigator(PumpStateMachine(), ReservoirStateMachine(res_adc))
 
 
 def on_command_completion(command):
@@ -62,12 +62,12 @@ while True:
 
     # volts2 = ads_adc.val_to_voltage(ads_adc.read_adc_from_channel('111'))  # adc channel 1 -> A0
 
-    rw = res_adc.get_res_weight()
+    # rw = res_adc.get_res_weight()
 
     #print(f'photo adc: {photo}')
 
-    r_weight = irig.reservoir.weight
-    print(f"Current reservoir weight: {irig.reservoir.weight}g, target = {irig.target_weight}g")
+    # r_weight = irig.reservoir.weight
+    # print(f"Current reservoir weight: {irig.reservoir.weight}g, target = {irig.target_weight}g")
     try:
         temp, humidity = read_dht()
     except:
@@ -80,7 +80,7 @@ while True:
     sensor_packet_dict = {'temp': temp,
                           'humidity': humidity,
                           'light': light,
-                          'reservoir_weight': round(r_weight, 2)
+                          # 'reservoir_weight': round(r_weight, 2)
                           }
 
     uart0.write(SensorEncoder(sensor_packet_dict).message)
@@ -93,10 +93,10 @@ while True:
         print(msg)
         if msg.strip() == 'bb':
             print('add command')
-            new = DeviceCommand('water', target=4, on_completion=on_command_completion, on_failure=on_command_failed)
-            irig.enqueue_command(new)
+            # new = DeviceCommand('water', target=4, on_completion=on_command_completion, on_failure=on_command_failed)
+            # irig.enqueue_command(new)
 
-    irig.tick()
+    # irig.tick()
     internal_led.toggle()
 
     end_time = time.ticks_ms()
